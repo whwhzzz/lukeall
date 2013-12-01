@@ -798,12 +798,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
         policy = new KeepLastIndexDeletionPolicy();
       }
       cfg.setIndexDeletionPolicy(policy);
-      MergePolicy mp = cfg.getMergePolicy();
-      if (mp instanceof LogMergePolicy) {
-        ((LogMergePolicy)mp).setUseCompoundFile(IndexGate.preferCompoundFormat(dir));
-      } else if (mp instanceof TieredMergePolicy) {
-        ((TieredMergePolicy)cfg.getMergePolicy()).setUseCompoundFile(IndexGate.preferCompoundFormat(dir));
-      }
+      cfg.setUseCompoundFile(IndexGate.preferCompoundFormat(dir));
       IndexWriter iw = new IndexWriter(dir, cfg);
       return iw;
     } catch (Exception e) {
@@ -1138,7 +1133,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
       }
       showFiles(dir, null);
       if (ir instanceof CompositeReader) {
-        ar = new SlowCompositeReaderWrapper((CompositeReader)ir);
+        ar = SlowCompositeReaderWrapper.wrap((CompositeReader)ir);
       } else if (ir instanceof AtomicReader) {
         ar = (AtomicReader)ir;
       }
@@ -1347,8 +1342,6 @@ public class Luke extends Thinlet implements ClipboardOwner {
     while (it.hasNext()) {
       IndexCommit commit = (IndexCommit)it.next();
       // figure out the name of the segment files
-      Collection<String> files = commit.getFileNames();
-      Iterator<String> itf = files.iterator();
       Object row = create("row");
       boolean enabled = rowNum < commits.size() - 1;
       Color color = Color.BLUE;
@@ -1410,7 +1403,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
       errorMsg("Error reading segment infos for '" + segName + ": " + e.toString());
       return;
     }
-    for (SegmentInfoPerCommit si : infos.asList()) {
+    for (SegmentCommitInfo si : infos.asList()) {
       Object r = create("row");
       add(segTable, r);
       Object cell = create("cell");
@@ -1456,7 +1449,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
     if (row == null) {
       return;
     }
-    SegmentInfoPerCommit si = (SegmentInfoPerCommit)getProperty(row, "si");
+    SegmentCommitInfo si = (SegmentCommitInfo)getProperty(row, "si");
     if (si == null) {
       showStatus("Missing SegmentInfoPerCommit???");
       return;
@@ -2054,7 +2047,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
         Object fixRes = find(dialog, "fixRes");
         PanelPrintWriter ppw = (PanelPrintWriter)getProperty(dialog, "ppw");
         try {
-          ci.fixIndex(status, c);
+          ci.fixIndex(status);
           setString(fixRes, "text", "DONE. Review the output above.");
         } catch (Exception e) {
           ppw.println("\nERROR during Fix Index:");
@@ -2417,18 +2410,11 @@ public class Luke extends Thinlet implements ClipboardOwner {
           cfg.setIndexDeletionPolicy(policy);
           cfg.setTermIndexInterval(tii);
           MergePolicy p = cfg.getMergePolicy();
-          if (p instanceof LogMergePolicy) {
-            ((LogMergePolicy)p).setUseCompoundFile(useCompound);
-            if (useCompound) {
-              ((LogMergePolicy)p).setNoCFSRatio(1.0);
-            }
-          } else if (p instanceof TieredMergePolicy) {
-            ((TieredMergePolicy)p).setUseCompoundFile(useCompound);            
-            if (useCompound) {
-              ((TieredMergePolicy)p).setNoCFSRatio(1.0);
-            }
+          if (useCompound) {
+            p.setNoCFSRatio(1.0);
           }
           cfg.setInfoStream(ppw);
+          cfg.setUseCompoundFile(useCompound);
           iw = new IndexWriter(dir, cfg);
           long startSize = Util.calcTotalFileSize(pName, dir);
           long startTime = System.currentTimeMillis();
@@ -3186,10 +3172,10 @@ public class Luke extends Thinlet implements ClipboardOwner {
     setString(sim, "text", s.getClass().getName());
     try {
       float newFVal = Float.parseFloat(getString(newNorm, "text"));
-      byte newBVal = Util.encodeNormValue(newFVal, f.name(), s);
+      long newBVal = Util.encodeNormValue(newFVal, f.name(), s);
       float encFVal = Util.decodeNormValue(newBVal, f.name(), s);
       setString(encNorm, "text", String.valueOf(encFVal) +
-          " (0x" + Util.byteToHex(newBVal) + ")");
+              " (0x" + Util.longToHex(newBVal) + ")");
       putProperty(dialog, "newNorm", new Float(newFVal));
       doLayout(dialog);
     } catch (Exception e) {

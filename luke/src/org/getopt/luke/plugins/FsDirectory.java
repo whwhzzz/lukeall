@@ -19,8 +19,6 @@ package org.getopt.luke.plugins;
 
 
 import java.io.*;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.Random;
 
@@ -33,7 +31,6 @@ import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.lucene.store.*;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -334,5 +331,23 @@ public class FsDirectory extends Directory {
   public void sync(Collection<String> names) throws IOException {
     // not easily supported... we would have to track all open outputs
   }
+
+@Override
+public void clearLock(String arg0) throws IOException {
+	// TODO Auto-generated method stub
+	
+}
+
+@Override
+public LockFactory getLockFactory() {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+@Override
+public void setLockFactory(LockFactory arg0) throws IOException {
+	// TODO Auto-generated method stub
+	
+}
 
 }
